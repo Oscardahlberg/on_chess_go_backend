@@ -27,7 +27,7 @@ type Lobby struct {
 	Player2Socket *websocket.Conn
 	Expires       time.Time
 	StartPlayer   string
-	GameState     GameState
+	GameState     GameData
 }
 
 func GetHome(c *gin.Context) {
@@ -62,11 +62,15 @@ func PostNewLobby(c *gin.Context) {
 		Id:            gameId,
 		Player1:       userId,
 		Player1Socket: nil,
-		Player2:       nil,
+		Player2:       "",
 		Player2Socket: nil,
 		Expires:       expirationTime,
-		StartPlayer:   nil,
-		GameState:     game.initChess(),
+		StartPlayer:   "",
+		GameState: GameData{
+			State:           game.initChess(),
+			WhiteLostPieces: []string{},
+			BlackLostPieces: []string{},
+		},
 	})
 	if err != nil {
 		c.String(http.StatusInternalServerError, fmt.Sprintf("Error: %v", err))
@@ -103,12 +107,12 @@ func PostJoinLobby(c *gin.Context) {
 		c.String(http.StatusNotFound, "")
 		return
 	}
-	parsedLobby.Player2 = userId
 
-	parsedLobby.StartPlayer = "Player1"
+	parsedLobby.White = "Player1"
 	if rand.Int(2) == 2 {
 		parsedLobby.White = "Player2"
 	}
+	parsedLobby.Player2 = userId
 
 	delRes, err := database.OpenLobbys.DeleteOne(context.Background(), bson.M{"Id": gameId.LobbyId})
 	if err != nil {
@@ -139,8 +143,8 @@ func GetLobbys(c *gin.Context) {
 	c.Header("Expires", "0")
 
 	type lobbys struct {
-		Open   []Lobby
-		Closed []Lobby
+		Open    []Lobby
+		Ongoing []Lobby
 	}
 
 	var parsed_open_lobbys []Lobby
@@ -190,7 +194,6 @@ func getOngoingLobby(c *gin.Context) (Bson.M, string, error) {
 	userId := getCookie(c)
 
 	var result bson.M
-	plyr := 0
 
 	err := database.OngoingLobbys.FindOne(context.Background(), Bson.M{"Player1": userId}).Decode(&result)
 	if err == nil {
@@ -202,28 +205,21 @@ func getOngoingLobby(c *gin.Context) (Bson.M, string, error) {
 		return result, "Player2", nil
 	}
 
-	return nil, nil, errors.New("No open lobby found ")
+	return nil, "", errors.New("No ongoing lobby found")
 }
 
-// for testing
-func MongoPopulate(c *gin.Context) {
-	ins_res, err := database.OpenLobbys.InsertOne(context.Background(), bson.M{
-		"id":      uuid.NewString(),
-		"host":    uuid.NewString(),
-		"player2": "",
-		"expires": time.Now().Add(24 * time.Hour),
-	})
-	if err != nil {
-		c.String(http.StatusInternalServerError, fmt.Sprintf("Error: %v", err))
-		return
-	}
-	if ins_res != nil {
-		log.Println("Response inserting open lobby: ", ins_res)
-	}
+func postOngoingLobby(lobby Bson.M, plyr string, c *gin.Context) error {
+	userId := getCookie(c)
 
-	c.String(http.StatusOK, "Inserted a open lobby\n")
+	_, err := database.OngoingLobbys.UpdateOne(context.Background(), Bson.M{plyr: userId}, Bson.M{"$set": lobby})
+	return err
 }
 
+func postEndGame(lobby Bson.M, plyr string, c *gin.Context) error {
+	//TODO delete ongoing, create X past/completed/over/
+}
+
+// For testing
 func MongoDeleteAllOpenLobbys(c *gin.Context) {
 	_, err := database.OpenLobbys.DeleteMany(context.Background(), bson.M{})
 
@@ -244,28 +240,4 @@ func MongoDeleteAllOngoingLobbys(c *gin.Context) {
 	}
 
 	c.String(http.StatusOK, "Deleted all Closed Lobbys\n")
-}
-
-// for testing
-func MongoGet(c *gin.Context) {
-	cursor, err := database.OpenLobbys.Find(
-		context.Background(), bson.M{})
-	if err != nil {
-		c.String(http.StatusInternalServerError, fmt.Sprintf("Error: %v", err))
-		return
-	}
-	defer cursor.Close(context.Background())
-
-	var lobbys []Lobby
-
-	if err := cursor.All(context.Background(), &lobbys); err != nil {
-		c.String(http.StatusInternalServerError, fmt.Sprintf("Cursor decode error: %v", err))
-		return
-	}
-	log.Println(lobbys)
-
-	if err = cursor.Err(); err != nil {
-		log.Fatal(err)
-	}
-	c.JSON(http.StatusOK, lobbys)
 }

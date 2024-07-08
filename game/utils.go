@@ -18,13 +18,19 @@ const (
 
 type GameUpdateMessage struct {
 	GameMessage string
-	NewState    GameState
+	NewState    GameData
+}
+
+type GameData struct {
+	State           GameState
+	WhiteLostPieces []string
+	BlackLostPieces []string
 }
 
 var GameState [8][8]string
 
 func initChess() GameState {
-	GameState{
+	return GameState{
 		{WTower, WPawn, nil, nil, nil, nil, BPawn, BTower},
 		{WKnight, WPawn, nil, nil, nil, nil, BPawn, BKnight},
 		{WBishop, WPawn, nil, nil, nil, nil, BPawn, BBishop},

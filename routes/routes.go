@@ -34,13 +34,11 @@ func SetupRoutes() *gin.Engine {
 	router.GET("/", handlers.GetHome)
 
 	// Websockets
-	router.GET("/get-wait-for-opponent", func(c *gin.Context) {
+	router.GET("/game-channel", func(c *gin.Context) {
 		web_socket_handlers.handleConnections(c)
 	})
 
 	// Temporary Routes
-	router.GET("/get-test", handlers.MongoGet)
-	router.GET("/populate-test", handlers.MongoPopulate)
 	router.GET("/delete-op-test", handlers.MongoDeleteAllOpenLobbys)
 	router.GET("/delete-on-test", handlers.MongoDeleteAllOngoingLobbys)
 

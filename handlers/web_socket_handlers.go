@@ -20,12 +20,12 @@ import (
 
 var upgrader = websocket.Upgrader{}
 
-func handleConnections(c *gin.Context) {
-	type clientMessage struct {
-		Server     string
-		GameUpdate GameUpdateMessage
-	}
+type clientMessage struct {
+	Server     string
+	GameUpdate GameUpdateMessage
+}
 
+func handleConnections(c *gin.Context) {
 	ws, err := upgrader.Upgrade(c.Writer, c.Request, nil)
 	if err != nil {
 		log.Println("Error upgrading websocket connection: ", err.Error())
@@ -33,8 +33,7 @@ func handleConnections(c *gin.Context) {
 	}
 	defer ws.Close()
 
-	// Sends the start message to whoever player starts
-	initGame(ws, &c)
+	startup(ws, &c)
 
 	for {
 		var msg clientMessage
@@ -47,20 +46,23 @@ func handleConnections(c *gin.Context) {
 		}
 
 		// Gets the open lobby JSON from Mongodb
-		lobby, Plyr, err := routes.getOngoingLobby(&c)
+		lobby, plyr, err := getOngoingLobby(&c)
 		if err != nil {
 			log.Println("Couldnt find open lobby connected with user id", err.Error())
 			c.AbortWithError(http.StatusInternalServerError, err)
 		}
-
-		response := gameHandler.handleMsg(Plyr, msg, lobby)
+		response, err := handleClientMsg(msg, ws, c)
 		if err != nil {
-			log.Println("Error with message from client ", err.Error())
+			log.Println("Client message error: ", err.Error())
 			c.AbortWithError(http.StatusInternalServerError, err)
 		}
 
-		// To client
-		err = ws.WriteJson(response)
+		opponent := lobby["Player1Socket"]
+		if plyr == "Player1" {
+			opponent = lobby["Player2Socket"]
+		}
+
+		err = opponent.WriteJson(response)
 		if err != nil {
 			log.Println("Error upgrading websocket connection: ", err.Error())
 			c.AbortWithError(http.StatusInternalServerError, err)
@@ -68,43 +70,71 @@ func handleConnections(c *gin.Context) {
 	}
 }
 
-// Since player 2 will always be the second player joining the lobby
-// He will have to send the game start message to player 1
-// Firstly the websocket connection info gets stored
+func handleClientMsg(msg *clientMesssage, lobby *Lobby, plyr string, ws *websocket.Conn, c *gin.Context) (clientMessage, error) {
+	var err error
+	serverMsg := ""
+	var gameMsg string
+	var newState GameData
+	lobby["GameState"] = msg.GameUpdate.NewState
+
+	switch msg.clientMessage.GameUpdate.GameMessage {
+	case "Game Update":
+		gameMsg = "Player1 Turn"
+		if plyr == "Player2" {
+			gameMsg = "Player2 Turn"
+		}
+		err = postOngoingLobby(lobby, plyr, c)
+	case "White win" || "Black win":
+		gameMsg = msg.clientMessage.GameUpdate.GameMessage
+		err = postEndGame(lobby, plyr, c) //TODO
+	}
+
+	response := clientMessage{
+		Server: serverMsg,
+		GameUpdate: GameUpdateMessage{
+			GameMessage: gameMsg,
+			NewState:    msg.GameUpdate.NewState,
+		},
+	}
+	return response, err
+}
+
 func initGame(ws *websocket.Conn, c *gin.Context) {
-	lobby, Plyr, err := routes.getOngoingLobby(&c)
+	// Lobby data, Plyr is if the client is host or player2
+	lobby, plyr, err := getOngoingLobby(c)
 	if err != nil {
 		log.Println("Couldnt find open lobby connected with user id", err.Error())
 		c.AbortWithError(http.StatusInternalServerError, err)
 	}
 
-	if Plyr == "Player1" {
-		lobby.Player1Socket = ws
+	if plyr == "Player1" {
+		lobby["Player1Socket"] = ws
+	} else {
+		lobby["Player2Socket"] = ws
 	}
-	lobby.Player2Socket = ws
 
-	err = routes.postOngoingLobby() // Make
+	err = postOngoingLobby(lobby, plyr, c) // Make
 	if err != nil {
 		log.Println("DB error: ", err.Error())
 		c.AbortWithError(http.StatusInternalServerError, err)
 	}
 
-	if Plyr == "Player2" {
-		gameMsg := "Player1 Start"
-		if lobby.StartPlayer == "Player2" {
-		gameMsg:
-			"Player2 Start"
+	if plyr == "Player2" {
+		gameMsg := "false"
+		// If the player starting is the one who sent this msg
+		if lobby["StartPlayer"] == plyr {
+			gameMsg = "true"
 		}
 
-		startMsg = clientMessage{
-			Server: "Player 2",
+		startMsg := clientMessage{
+			Server: plyr,
 			GameUpdate: GameUpdateMessage{
 				GameMessage: gameMsg,
-				NewState:    lobby.GameState, // Will always be start state
+				NewState:    lobby["GameState"],
 			},
 		}
 
-		err = lobby.Player1Socket.WriteJson(startMsg)
+		err = ws.WriteJSON(startMsg)
 		if err != nil {
 			log.Println("Error writing Json to : ", err.Error())
 			c.AbortWithError(http.StatusInternalServerError, err)
