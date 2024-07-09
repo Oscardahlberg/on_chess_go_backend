@@ -22,7 +22,7 @@ var upgrader = websocket.Upgrader{}
 
 type clientMessage struct {
 	Server     string
-	GameUpdate GameUpdateMessage
+	GameUpdate game.GameUpdateMessage
 }
 
 func handleConnections(c *gin.Context) {
@@ -70,7 +70,7 @@ func handleConnections(c *gin.Context) {
 	}
 }
 
-func handleClientMsg(msg *clientMesssage, lobby *Lobby, plyr string, ws *websocket.Conn, c *gin.Context) (clientMessage, error) {
+func handleClientMsg(msg *clientMessage, lobby *Lobby, plyr string, ws *websocket.Conn, c *gin.Context) (clientMessage, error) {
 	var err error
 	serverMsg := ""
 	var gameMsg string
@@ -86,7 +86,7 @@ func handleClientMsg(msg *clientMesssage, lobby *Lobby, plyr string, ws *websock
 		err = postOngoingLobby(lobby, plyr, c)
 	case "White win" || "Black win":
 		gameMsg = msg.clientMessage.GameUpdate.GameMessage
-		err = postEndGame(lobby, plyr, c) //TODO
+		err = postEndGame(lobby, plyr, c)
 	}
 
 	response := clientMessage{

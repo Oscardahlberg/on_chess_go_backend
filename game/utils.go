@@ -27,17 +27,17 @@ type GameData struct {
 	BlackLostPieces []string
 }
 
-var GameState [8][8]string
+type GameState [8][8]string
 
-func initChess() GameState {
+func InitChess() GameState {
 	return GameState{
-		{WTower, WPawn, nil, nil, nil, nil, BPawn, BTower},
-		{WKnight, WPawn, nil, nil, nil, nil, BPawn, BKnight},
-		{WBishop, WPawn, nil, nil, nil, nil, BPawn, BBishop},
-		{WQueen, WPawn, nil, nil, nil, nil, BPawn, BQueen},
-		{WKing, WPawn, nil, nil, nil, nil, BPawn, BKing},
-		{WBishop, WPawn, nil, nil, nil, nil, BPawn, BBishop},
-		{WKnight, WPawn, nil, nil, nil, nil, BPawn, BKnight},
-		{WTower, WPawn, nil, nil, nil, nil, BPawn, BTower},
+		{WTower, WPawn, "", "", "", "", BPawn, BTower},
+		{WKnight, WPawn, "", "", "", "", BPawn, BKnight},
+		{WBishop, WPawn, "", "", "", "", BPawn, BBishop},
+		{WQueen, WPawn, "", "", "", "", BPawn, BQueen},
+		{WKing, WPawn, "", "", "", "", BPawn, BKing},
+		{WBishop, WPawn, "", "", "", "", BPawn, BBishop},
+		{WKnight, WPawn, "", "", "", "", BPawn, BKnight},
+		{WTower, WPawn, "", "", "", "", BPawn, BTower},
 	}
 }

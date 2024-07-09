@@ -14,6 +14,7 @@ var Client *mongo.Client
 var Database *mongo.Database
 var OpenLobbys *mongo.Collection
 var OngoingLobbys *mongo.Collection
+var ArchivedLobbys *mongo.Collection
 
 func InitDB() error {
 	ctx, cancel := context.WithTimeout(context.Background(), 1*time.Second)
@@ -30,6 +31,7 @@ func InitDB() error {
 	Database := Client.Database("on_chess")
 	OpenLobbys = Database.Collection("open_lobbys")
 	OngoingLobbys = Database.Collection("ongoing_lobbys")
+	ArchivedLobbys = Database.Collection("archived_lobbys")
 
 	return nil
 }
