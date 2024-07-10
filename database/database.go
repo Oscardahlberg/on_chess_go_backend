@@ -11,6 +11,7 @@ import (
 )
 
 var Client *mongo.Client
+
 var Database *mongo.Database
 var OpenLobbys *mongo.Collection
 var OngoingLobbys *mongo.Collection
