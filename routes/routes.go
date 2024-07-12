@@ -5,7 +5,6 @@ import (
 
 	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
-	"github.com/gorilla/websocket"
 
 	"gobackend/handlers"
 )
@@ -28,14 +27,14 @@ func SetupRoutes() *gin.Engine {
 	// Routes
 	router.POST("/new-lobby", handlers.PostNewLobby)
 	router.POST("/join-lobby", handlers.PostJoinLobby)
-	router.POST("/create-dumb-bot", bots.PostCreateDumbBot)
+	//router.POST("/create-dumb-bot", bots.PostCreateDumbBot)
 
 	router.GET("/get-lobbys", handlers.GetLobbys)
 	router.GET("/", handlers.GetHome)
 
 	// Websockets
 	router.GET("/game-channel", func(c *gin.Context) {
-		web_socket_handlers.handleConnections(c)
+		handlers.HandleConnections(c)
 	})
 
 	// Temporary Routes

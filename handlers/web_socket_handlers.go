@@ -4,17 +4,9 @@ import (
 	"log"
 	"net/http"
 
-	"context"
-	"fmt"
 	"github.com/gorilla/websocket"
-	"go.mongodb.org/mongo-driver/bson"
-	"go.mongodb.org/mongo-driver/mongo"
-	"go.mongodb.org/mongo-driver/mongo/options"
-	"time"
 
 	"github.com/gin-gonic/gin"
-	"github.com/google/uuid"
-	"gobackend/database"
 	"gobackend/game"
 )
 
@@ -25,7 +17,7 @@ type clientMessage struct {
 	GameUpdate game.GameUpdateMessage
 }
 
-func handleConnections(c *gin.Context) {
+func HandleConnections(c *gin.Context) {
 	ws, err := upgrader.Upgrade(c.Writer, c.Request, nil)
 	if err != nil {
 		log.Println("Error upgrading websocket connection: ", err.Error())
@@ -33,7 +25,7 @@ func handleConnections(c *gin.Context) {
 	}
 	defer ws.Close()
 
-	startup(ws, &c)
+	initGame(ws, c)
 
 	for {
 		var msg clientMessage
@@ -46,12 +38,12 @@ func handleConnections(c *gin.Context) {
 		}
 
 		// Gets the open lobby JSON from Mongodb
-		lobby, plyr, err := getOngoingLobby(&c)
+		lobby, plyr, err := getOngoingLobby(c)
 		if err != nil {
 			log.Println("Couldnt find open lobby connected with user id", err.Error())
 			c.AbortWithError(http.StatusInternalServerError, err)
 		}
-		response, err := handleClientMsg(msg, ws, c)
+		response, err := handleClientMsg(msg, lobby, plyr, ws, c)
 		if err != nil {
 			log.Println("Client message error: ", err.Error())
 			c.AbortWithError(http.StatusInternalServerError, err)
@@ -62,7 +54,7 @@ func handleConnections(c *gin.Context) {
 			opponent = lobby.Player2Socket
 		}
 
-		err = opponent.WriteJson(response)
+		err = opponent.WriteJSON(response)
 		if err != nil {
 			log.Println("Error upgrading websocket connection: ", err.Error())
 			c.AbortWithError(http.StatusInternalServerError, err)
@@ -70,28 +62,27 @@ func handleConnections(c *gin.Context) {
 	}
 }
 
-func handleClientMsg(msg *clientMessage, lobby *Lobby, plyr string, ws *websocket.Conn, c *gin.Context) (clientMessage, error) {
+func handleClientMsg(msg clientMessage, lobby Lobby, plyr string, ws *websocket.Conn, c *gin.Context) (clientMessage, error) {
 	var err error
 	serverMsg := ""
 	var gameMsg string
-	var newState GameData
 	lobby.GameState = msg.GameUpdate.NewState
 
-	switch msg.clientMessage.GameUpdate.GameMessage {
+	switch msg.GameUpdate.GameMessage {
 	case "Game Update":
 		gameMsg = "Player1 Turn"
 		if plyr == "Player2" {
 			gameMsg = "Player2 Turn"
 		}
 		err = postOngoingLobby(lobby, plyr, c)
-	case "White win" || "Black win":
-		gameMsg = msg.clientMessage.GameUpdate.GameMessage
+	case "White win", "Black win":
+		gameMsg = msg.GameUpdate.GameMessage
 		err = postEndGame(lobby, plyr, c)
 	}
 
 	response := clientMessage{
 		Server: serverMsg,
-		GameUpdate: GameUpdateMessage{
+		GameUpdate: game.GameUpdateMessage{
 			GameMessage: gameMsg,
 			NewState:    msg.GameUpdate.NewState,
 		},
@@ -128,7 +119,7 @@ func initGame(ws *websocket.Conn, c *gin.Context) {
 
 		startMsg := clientMessage{
 			Server: plyr,
-			GameUpdate: GameUpdateMessage{
+			GameUpdate: game.GameUpdateMessage{
 				GameMessage: gameMsg,
 				NewState:    lobby.GameState,
 			},

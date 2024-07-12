@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"errors"
 	"log"
 	"math/rand"
 	"net/http"
@@ -25,7 +26,7 @@ type Lobby struct {
 	Player1Socket *websocket.Conn
 	Player2       string
 	Player2Socket *websocket.Conn
-	Expires       time.Time
+	Expires       *time.Time
 	StartPlayer   string
 	GameState     game.GameData
 }
@@ -64,7 +65,7 @@ func PostNewLobby(c *gin.Context) {
 		Player1Socket: nil,
 		Player2:       "",
 		Player2Socket: nil,
-		Expires:       expirationTime,
+		Expires:       &expirationTime,
 		StartPlayer:   "",
 		GameState: game.GameData{
 			State:           game.InitChess(),
@@ -195,55 +196,56 @@ func getOngoingLobby(c *gin.Context) (Lobby, string, error) {
 
 	var result Lobby
 
-	err := database.OngoingLobbys.FindOne(context.Background(), Bson.M{"Player1": userId}).Decode(&result)
+	err := database.OngoingLobbys.FindOne(context.Background(), bson.M{"Player1": userId}).Decode(&result)
 	if err == nil {
 		return result, "Player1", nil
 	}
 
-	err = database.OngoingLobbys.FindOne(context.Background(), Bson.M{"Player2": userId}).Decode(&result)
+	err = database.OngoingLobbys.FindOne(context.Background(), bson.M{"Player2": userId}).Decode(&result)
 	if err == nil {
 		return result, "Player2", nil
 	}
 
-	return nil, "", errors.New("No ongoing lobby found")
+	return Lobby{}, "", errors.New("No ongoing lobby found")
 }
 
-func postOngoingLobby(lobby Bson.M, plyr string, c *gin.Context) error {
+func postOngoingLobby(lobby Lobby, plyr string, c *gin.Context) error {
 	userId := getCookie(c)
 
-	_, err := database.OngoingLobbys.UpdateOne(context.Background(), Bson.M{plyr: userId}, Bson.M{"$set": lobby})
+	_, err := database.OngoingLobbys.UpdateOne(context.Background(), bson.M{plyr: userId}, bson.M{"$set": lobby})
 	return err
 }
 
-func postEndGame(lobby Bson.M, plyr string, c *gin.Context) error {
+func postEndGame(lobby Lobby, plyr string, c *gin.Context) error {
 	userId := getCookie(c)
 
+	var err error
 	if plyr == "Player1" {
-		err := database.OngoingLobbys.DeleteOne(context.Background(), Bson.M{"Player2": userId})
+		_, err = database.OngoingLobbys.DeleteOne(context.Background(), bson.M{"Player2": userId})
 	} else if plyr == "Player2" {
-		err := database.OngoingLobbys.DeleteOne(context.Background(), Bson.M{"Player2": userId})
+		_, err = database.OngoingLobbys.DeleteOne(context.Background(), bson.M{"Player2": userId})
 	}
 	if err != nil {
 		c.String(http.StatusInternalServerError, fmt.Sprintf("Delete ongoing lobby on game over error: %v", err))
-		return
+		return err
 	}
 
-	err = database.ArchivedLobbys.Insert(context.Background(), Lobby{
-		Id:            lobby["Id"],
-		Player1:       lobby["Player1"],
+	_, err = database.ArchivedLobbys.InsertOne(context.Background(), Lobby{
+		Id:            lobby.Id,
+		Player1:       lobby.Player1,
 		Player1Socket: nil,
-		Player2:       lobby["Player2"],
+		Player2:       lobby.Player2,
 		Player2Socket: nil,
 		Expires:       nil,
-		StartPlayer:   lobby["StartPlayer"],
-		GameState:     lobby["GameState"],
+		StartPlayer:   lobby.StartPlayer,
+		GameState:     lobby.GameState,
 	})
 
 	if err != nil {
 		c.String(http.StatusInternalServerError, fmt.Sprintf("Error inserting a lobby: %v", err))
-		return
+		return err
 	}
-	c.String(http.StatusOK, "Archived lobby\n")
+	return nil
 }
 
 // For testing
