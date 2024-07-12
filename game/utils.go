@@ -18,99 +18,99 @@ type GameData struct {
 	BlackLostPieces []string
 }
 
-type GameState [8][8]piece
+type GameState [8][8]*piece
 
 func InitChess() GameState {
 	return GameState{
 		{btower, bknight, bbishop, bking, bqueen, bbishop, bknight, btower},
 		{bpawn, bpawn, bpawn, bpawn, bpawn, bpawn, bpawn, bpawn},
-		{"", "", "", "", "", "", "", ""},
-		{"", "", "", "", "", "", "", ""},
-		{"", "", "", "", "", "", "", ""},
-		{"", "", "", "", "", "", "", ""},
+		{nil, nil, nil, nil, nil, nil, nil, nil},
+		{nil, nil, nil, nil, nil, nil, nil, nil},
+		{nil, nil, nil, nil, nil, nil, nil, nil},
+		{nil, nil, nil, nil, nil, nil, nil, nil},
 		{wpawn, wpawn, wpawn, wpawn, wpawn, wpawn, wpawn, wpawn},
 		{wtower, wknight, wbishop, wking, wqueen, wbishop, wknight, wtower},
 	}
 }
 
-var wpawn = piece{
-	Name:           "pawn",
-	Colour:         "white",
-	Move:           "1;Vertical",
-	AdditionalMove: "1;Diagonal;UP;A",
-}
-
-var bpawn = piece{
+var wpawn = &piece{
 	Name:           "pawn",
 	Colour:         "black",
 	Move:           "1;Vertical",
 	AdditionalMove: "1;Diagonal;UP;A",
 }
 
-var wtower = piece{
+var bpawn = &piece{
+	Name:           "pawn",
+	Colour:         "black",
+	Move:           "1;Vertical",
+	AdditionalMove: "1;Diagonal;UP;A",
+}
+
+var wtower = &piece{
 	Name:           "tower",
 	Colour:         "white",
 	Move:           "8;Vertical;Horizontal;",
 	AdditionalMove: "",
 }
 
-var btower = piece{
+var btower = &piece{
 	Name:           "tower",
 	Colour:         "black",
 	Move:           "8;Vertical;Horizontal;",
 	AdditionalMove: "",
 }
 
-var wknight = piece{
+var wknight = &piece{
 	Name:           "knight",
 	Colour:         "white",
 	Move:           "",
 	AdditionalMove: "5;Knight;", // knight move
 }
 
-var bknight = piece{
+var bknight = &piece{
 	Name:           "knight",
 	Colour:         "black",
 	Move:           "",
 	AdditionalMove: "5;Knight;", // knight move
 }
 
-var wbishop = piece{
+var wbishop = &piece{
 	Name:           "bishop",
 	Colour:         "white",
 	Move:           "8;Diagonal;",
 	AdditionalMove: "",
 }
 
-var bbishop = piece{
+var bbishop = &piece{
 	Name:           "bishop",
 	Colour:         "black",
 	Move:           "8;Diagonal;",
 	AdditionalMove: "",
 }
 
-var wqueen = piece{
+var wqueen = &piece{
 	Name:           "queen",
 	Colour:         "white",
 	Move:           "8;Any",
 	AdditionalMove: "",
 }
 
-var bqueen = piece{
+var bqueen = &piece{
 	Name:           "queen",
 	Colour:         "black",
 	Move:           "8;Any",
 	AdditionalMove: "",
 }
 
-var wking = piece{
+var wking = &piece{
 	Name:           "king",
 	Colour:         "white",
 	Move:           "1;Any",
 	AdditionalMove: "King",
 }
 
-var bking = piece{
+var bking = &piece{
 	Name:           "king",
 	Colour:         "black",
 	Move:           "1;Any",

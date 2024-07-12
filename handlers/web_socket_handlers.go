@@ -57,9 +57,9 @@ func handleConnections(c *gin.Context) {
 			c.AbortWithError(http.StatusInternalServerError, err)
 		}
 
-		opponent := lobby["Player1Socket"]
+		opponent := lobby.Player1Socket
 		if plyr == "Player1" {
-			opponent = lobby["Player2Socket"]
+			opponent = lobby.Player2Socket
 		}
 
 		err = opponent.WriteJson(response)
@@ -75,7 +75,7 @@ func handleClientMsg(msg *clientMessage, lobby *Lobby, plyr string, ws *websocke
 	serverMsg := ""
 	var gameMsg string
 	var newState GameData
-	lobby["GameState"] = msg.GameUpdate.NewState
+	lobby.GameState = msg.GameUpdate.NewState
 
 	switch msg.clientMessage.GameUpdate.GameMessage {
 	case "Game Update":
@@ -108,9 +108,9 @@ func initGame(ws *websocket.Conn, c *gin.Context) {
 	}
 
 	if plyr == "Player1" {
-		lobby["Player1Socket"] = ws
+		lobby.Player1Socket = ws
 	} else {
-		lobby["Player2Socket"] = ws
+		lobby.Player2Socket = ws
 	}
 
 	err = postOngoingLobby(lobby, plyr, c) // Make
@@ -122,7 +122,7 @@ func initGame(ws *websocket.Conn, c *gin.Context) {
 	if plyr == "Player2" {
 		gameMsg := "false"
 		// If the player starting is the one who sent this msg
-		if lobby["StartPlayer"] == plyr {
+		if lobby.StartPlayer == plyr {
 			gameMsg = "true"
 		}
 
@@ -130,7 +130,7 @@ func initGame(ws *websocket.Conn, c *gin.Context) {
 			Server: plyr,
 			GameUpdate: GameUpdateMessage{
 				GameMessage: gameMsg,
-				NewState:    lobby["GameState"],
+				NewState:    lobby.GameState,
 			},
 		}
 
